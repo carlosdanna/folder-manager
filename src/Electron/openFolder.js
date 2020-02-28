@@ -1,9 +1,9 @@
-const { ipcRenderer } = require("electron");
+const { ipcRenderer } = require('electron')
 
 // Tell main process to show the menu when demo button is clicked
-const contextMenuBtn = document.getElementById("open-folder");
+const contextMenuBtn = document.getElementById('open-folder')
 
-contextMenuBtn.addEventListener("click", () => {
-  console.log("click");
-  ipcRenderer.send("show-context-menu");
-});
+contextMenuBtn.addEventListener('click', () => {
+    console.log('click')
+    ipcRenderer.send('show-context-menu')
+})
