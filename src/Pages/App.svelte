@@ -4,6 +4,7 @@
 
 <script>
     import { readFiles as readFilesStore } from '../store.js'
+    import Breadcrumb from '../Components/Breadcrumb.svelte'
     import Title from '../Components/Title.svelte'
     import TopNavbar from '../Components/TopNavbar.svelte'
     import FileViewer from '../Components/FileViewer.svelte'
@@ -12,6 +13,9 @@
     const fs = require('fs')
 
     const isMac = process.platform === 'darwin'
+
+    let breadcrumbArray = []
+    let breadcrumbPrefix = ''
 
     const template = [
         // { role: 'appMenu' }
@@ -44,7 +48,24 @@
                         clickEvent()
                     },
                 },
+                {
+                    type: 'separator',
+                },
                 isMac ? { role: 'close' } : { role: 'quit' },
+            ],
+        },
+        {
+            label: 'View',
+            submenu: [
+                { role: 'reload' },
+                { role: 'forcereload' },
+                { role: 'toggledevtools' },
+                { type: 'separator' },
+                { role: 'resetzoom' },
+                { role: 'zoomin' },
+                { role: 'zoomout' },
+                { type: 'separator' },
+                { role: 'togglefullscreen' },
             ],
         },
     ]
@@ -52,11 +73,14 @@
     const menu = Menu.buildFromTemplate(template)
     Menu.setApplicationMenu(menu)
 
+    const breadcrumbsRegex = /[\/|\\][a-zA-Z0-9#\ \-_\$()\[\].,]*/gi
+
     let readFiles = []
     let folders = []
     let files = []
+    let folderPath = []
 
-    const mode = 'picture-view'
+    let viewMode = 'grid'
 
     const unsubscribe = readFilesStore.subscribe((value) => {
         readFiles = value
@@ -64,6 +88,9 @@
         files = getFiles(readFiles)
     })
 
+    function changeViewMode(mode) {
+        viewMode = mode
+    }
     function clickEvent() {
         dialog
             .showOpenDialog({
@@ -75,23 +102,7 @@
     function readDirectoryFiles(fileInformation) {
         const { filePaths } = fileInformation
         if (filePaths && filePaths[0]) {
-            fs.readdir(filePaths[0], (err, items) => {
-                const folders = items.map((element) => {
-                    const fullPath = `${filePaths[0]}/${element}`
-                    const isDirectory = fs.lstatSync(fullPath).isDirectory()
-                    const extension = isDirectory ? '' : getFileExtension(element)
-
-                    return {
-                        element,
-                        path: filePaths[0],
-                        fullPath,
-                        fileType: isDirectory ? 'folder' : 'file',
-                        extension,
-                    }
-                })
-                // Saves it on the global storage
-                readFilesStore.set(folders)
-            })
+            openFolder(filePaths[0])
         } else {
             console.log('No folders found')
             if (!readFilesStore) {
@@ -105,32 +116,73 @@
     }
 
     function getFiles(arrayOfFiles) {
-        return arrayOfFiles.filter((element) => element.fileType === 'file')
+        const checkImageRegex = /\.(?:jpg|gif|jpeg|jfif|png|webp)/g
+        return arrayOfFiles.filter((element) => checkImageRegex.test(element.extension) && element.fileType === 'file')
     }
 
     function getFileExtension(element) {
-        const regexExtension = /\.[0-9a-z]+$/i
-        return element.match(regexExtension)[0]
+        if (element) {
+            const regexExtension = /\.[0-9a-z]+$/gi
+            if (regexExtension.test(element)) {
+                const matches = element.match(regexExtension)
+                return matches[matches.length - 1]
+            }
+        }
+        return ''
     }
 
-    function openFolder(folderPath) {
-        console.log(folderPath)
-        fs.readdir(folderPath, (err, items) => {
-            const folders = items.map((element) => {
-                const fullPath = `${folderPath}/${element}`
-                const isDirectory = fs.lstatSync(fullPath).isDirectory()
-                const extension = isDirectory ? '' : getFileExtension(element)
+    function breadcrumbRoute(route) {
+        if (route) {
+            let breadcrumbArray = route.match(breadcrumbsRegex)
+            return generateBreadcrumbRoute(route, breadcrumbArray)
+        }
+        return []
+    }
 
-                return {
-                    element,
-                    path: folderPath,
-                    fullPath,
-                    fileType: isDirectory ? 'folder' : 'file',
-                    extension,
-                }
-            })
-            // Saves it on the global storage
-            readFilesStore.set(folders)
+    function checkRoutePrefix(path) {
+        const routePrefixRegex = /\w:/gi
+        if (routePrefixRegex.test(path)) {
+            return path.match(routePrefixRegex)[0]
+        }
+        return ''
+    }
+
+    function generateBreadcrumbRoute(route, breadcrumbArray) {
+        let routeDepht = checkRoutePrefix(route)
+
+        return breadcrumbArray.map((element) => {
+            routeDepht += element
+            return {
+                name: element.substr(1),
+                route: routeDepht,
+            }
+        })
+    }
+
+    function openFolder(newPath) {
+        fs.readdir(newPath, (err, items) => {
+            console.log(items, err)
+            if (items) {
+                folderPath = newPath
+                breadcrumbArray = breadcrumbRoute(folderPath)
+                const folders = items.map((element) => {
+                    const fullPath = `${folderPath}/${element}`
+                    const isDirectory = fs.lstatSync(fullPath).isDirectory()
+                    const extension = isDirectory ? '' : getFileExtension(element)
+
+                    return {
+                        element,
+                        path: folderPath,
+                        fullPath,
+                        fileType: isDirectory ? 'folder' : 'file',
+                        extension,
+                    }
+                })
+                // Saves it on the global storage
+                readFilesStore.set(folders)
+            } else {
+                console.error('Unable to open folder')
+            }
         })
     }
 </script>
@@ -139,8 +191,10 @@
     <!-- <TopNavbar {clickEvent} /> -->
     <Title title="Photo Albums" subTitle="A place to organize all the folders you have in your computer" />
     <!-- <button on:click="{clickEvent}">Open folder</button> -->
-
-    <FileNavbar />
-    <FileViewer {openFolder} {folders} {files} selectedView="{mode}" />
+    <div class="container">
+        <FileNavbar {viewMode} {changeViewMode} />
+        <Breadcrumb {openFolder} {breadcrumbArray} />
+        <FileViewer {openFolder} {folders} {files} {viewMode} />
+    </div>
 
 </main>

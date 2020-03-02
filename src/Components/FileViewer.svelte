@@ -10,6 +10,7 @@
 
     .card {
         width: 100%;
+        cursor: pointer;
     }
 </style>
 
@@ -17,17 +18,17 @@
     export let openFolder
     export let folders
     export let files
-    export let selectedView
+    export let viewMode
 </script>
 
 <div>
 
-    {#if selectedView == 'picture-view'}
+    {#if viewMode === 'grid'}
         <div class="tile is-ancestor grid-4">
             {#each folders as { element, fullPath }}
                 <div class="tile is-parent grid-element">
 
-                    <a
+                    <div
                         class="card"
                         on:click="{() => {
                             openFolder(fullPath)
@@ -44,7 +45,7 @@
                                 <p>{element}</p>
                             </div>
                         </div>
-                    </a>
+                    </div>
 
                 </div>
             {/each}
@@ -64,6 +65,12 @@
                         </div>
                     </div>
                 </div>
+            {/each}
+        </div>
+    {:else if 'portrait' === viewMode}
+        <div>
+            {#each files as { element, fullPath }}
+                <img src="{fullPath}" alt="someImage" />
             {/each}
         </div>
     {:else}

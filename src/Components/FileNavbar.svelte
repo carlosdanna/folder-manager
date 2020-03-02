@@ -3,13 +3,14 @@
 </style>
 
 <script>
-
+    export let viewMode
+    export let changeViewMode
 </script>
 
 <nav class="navbar" role="navigation" aria-label="main navigation">
 
     <div id="navbarBasicExample" class="navbar-menu">
-        <div class="navbar-start">
+        <!-- <div class="navbar-start">
             <a class="navbar-item">Home</a>
 
             <a class="navbar-item">Documentation</a>
@@ -25,15 +26,29 @@
                     <a class="navbar-item">Report an issue</a>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <div class="navbar-end">
             <div class="navbar-item">
                 <div class="buttons">
-                    <a class="button is-primary">
-                        <strong>Sign up</strong>
-                    </a>
-                    <a class="button is-light">Log in</a>
+                    <button
+                        class="button {viewMode === 'portrait' ? 'is-active' : ''}"
+                        on:click="{changeViewMode('portrait')}"
+                    >
+                        <span class="icon">
+                            <i class="fas fa-portrait"></i>
+                        </span>
+                    </button>
+                    <button class="button {viewMode === 'list' ? 'is-active' : ''}" on:click="{changeViewMode('list')}">
+                        <span class="icon">
+                            <i class="fas fa-bars"></i>
+                        </span>
+                    </button>
+                    <button class="button {viewMode === 'grid' ? 'is-active' : ''}" on:click="{changeViewMode('grid')}">
+                        <span class="icon">
+                            <i class="fas fa-th"></i>
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
