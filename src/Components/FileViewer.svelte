@@ -75,6 +75,7 @@
         </div>
     {:else}
         <article class="panel">
+            <p class="panel-heading">Folders</p>
             {#each folders as { element, fullPath }}
                 <a
                     class="panel-block"

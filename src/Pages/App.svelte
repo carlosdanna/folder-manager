@@ -3,14 +3,17 @@
 </style>
 
 <script>
+    import { onMount } from 'svelte'
+    const { dialog, Menu } = require('electron').remote
+    const fs = require('fs')
+
     import { readFiles as readFilesStore } from '../store.js'
     import Breadcrumb from '../Components/Breadcrumb.svelte'
     import Title from '../Components/Title.svelte'
     import TopNavbar from '../Components/TopNavbar.svelte'
     import FileViewer from '../Components/FileViewer.svelte'
     import FileNavbar from '../Components/FileNavbar.svelte'
-    const { dialog, Menu } = require('electron').remote
-    const fs = require('fs')
+    import SideMenu from '../Components/SideMenu.svelte'
 
     const isMac = process.platform === 'darwin'
 
@@ -44,7 +47,8 @@
                 {
                     label: 'Open',
                     role: 'open',
-                    click() {
+                    accelerator: 'CmdOrCtrl+O',
+                    click(menuItem, browserWindow, event) {
                         clickEvent()
                     },
                 },
@@ -80,6 +84,8 @@
     let files = []
     let folderPath = []
 
+    let showSideMenu = true
+
     let viewMode = 'grid'
 
     const unsubscribe = readFilesStore.subscribe((value) => {
@@ -88,9 +94,20 @@
         files = getFiles(readFiles)
     })
 
+    function toggleMenu() {
+        showSideMenu = !showSideMenu
+    }
+
     function changeViewMode(mode) {
         viewMode = mode
     }
+
+    onMount(() => {
+        const defaultFolder = 'C:\\Users\\cardan\\Pictures\\Anime'
+
+        openFolder(defaultFolder)
+    })
+
     function clickEvent() {
         dialog
             .showOpenDialog({
@@ -102,6 +119,7 @@
     function readDirectoryFiles(fileInformation) {
         const { filePaths } = fileInformation
         if (filePaths && filePaths[0]) {
+            console.log(filePaths[0])
             openFolder(filePaths[0])
         } else {
             console.log('No folders found')
@@ -116,8 +134,7 @@
     }
 
     function getFiles(arrayOfFiles) {
-        const checkImageRegex = /\.(?:jpg|gif|jpeg|jfif|png|webp)/g
-        return arrayOfFiles.filter((element) => checkImageRegex.test(element.extension) && element.fileType === 'file')
+        return arrayOfFiles.filter((element) => element.fileType === 'file' && element.isImageExtension)
     }
 
     function getFileExtension(element) {
@@ -160,8 +177,9 @@
     }
 
     function openFolder(newPath) {
+        const checkImageRegex = /\.?(jpg|gif|jpeg|jfif|png|webp)/gi
         fs.readdir(newPath, (err, items) => {
-            console.log(items, err)
+            JSON.stringify(items)
             if (items) {
                 folderPath = newPath
                 breadcrumbArray = breadcrumbRoute(folderPath)
@@ -169,6 +187,7 @@
                     const fullPath = `${folderPath}/${element}`
                     const isDirectory = fs.lstatSync(fullPath).isDirectory()
                     const extension = isDirectory ? '' : getFileExtension(element)
+                    const isImageExtension = extension && extension.match(checkImageRegex)[0] ? true : false
 
                     return {
                         element,
@@ -176,6 +195,7 @@
                         fullPath,
                         fileType: isDirectory ? 'folder' : 'file',
                         extension,
+                        isImageExtension,
                     }
                 })
                 // Saves it on the global storage
@@ -188,13 +208,27 @@
 </script>
 
 <main>
-    <!-- <TopNavbar {clickEvent} /> -->
-    <Title title="Photo Albums" subTitle="A place to organize all the folders you have in your computer" />
-    <!-- <button on:click="{clickEvent}">Open folder</button> -->
-    <div class="container">
-        <FileNavbar {viewMode} {changeViewMode} />
-        <Breadcrumb {openFolder} {breadcrumbArray} />
-        <FileViewer {openFolder} {folders} {files} {viewMode} />
+
+    <div class="columns">
+        <div class="column">
+            <Title
+                title="Photo Albums"
+                subTitle="A place to organize all the folders you have in your computer"
+                openFolder="{clickEvent}"
+                {toggleMenu}
+            />
+
+            <div class="container">
+                <FileNavbar {viewMode} {changeViewMode} />
+                <Breadcrumb {openFolder} {breadcrumbArray} />
+                <FileViewer {openFolder} {folders} {files} {viewMode} />
+            </div>
+        </div>
+        {#if showSideMenu}
+            <div class="column is-3">
+                <SideMenu {breadcrumbArray} />
+            </div>
+        {/if}
     </div>
 
 </main>
